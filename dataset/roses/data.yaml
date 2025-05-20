@@ -1,0 +1,10 @@
+path: ../dataset/roses  # dataset root dir
+train: images/train  # train images (relative to 'path')
+val: images/val  # val images (relative to 'path')
+
+# Classes
+names:
+  0: rose  # only one class: rose
+
+# Number of classes
+nc: 1 
