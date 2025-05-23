@@ -36,6 +36,3 @@ Thumbs.db
 *.log
 *.sqlite
 *.db
-
-# Training runs
-runs/ 
