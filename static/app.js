@@ -9,7 +9,7 @@ class ObjectDetector {
         this.detectionCtx = this.detectionCanvas.getContext('2d');
         // Set detection canvas to 640x480
         this.detectionCanvas.width = 640;
-        this.detectionCanvas.height = 480;
+        this.detectionCanvas.height = 640;
         
         this.startButton = document.getElementById('startButton');
         this.stopButton = document.getElementById('stopButton');
@@ -38,7 +38,7 @@ class ObjectDetector {
         
         // Add frame timing control
         this.lastDetectionTime = 0;
-        this.detectionInterval = 1000 / 30; // 30 FPS for detection
+        this.detectionInterval = 1000 / 120; // 30 FPS for detection
         
         this.setupEventListeners();
     }

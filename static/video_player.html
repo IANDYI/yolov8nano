@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rose Detection - Media Player</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .video-container {
+            margin: 20px auto;
+            position: relative;
+            width: 640px;
+            height: 480px;
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #videoElement, #imageElement {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 640px;
+            max-height: 480px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            display: block;
+        }
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        #imageElement {
+            display: none;
+        }
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background-color: #666;
+        }
+        .back-button:hover {
+            background-color: #555;
+        }
+        .file-type-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        .file-type-button {
+            background-color: #3498db;
+        }
+        .file-type-button.active {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="back-button button" onclick="window.location.href='index.html'">← Back to Live Feed</button>
+        <h1>Rose Detection - Media Player</h1>
+        
+        <div class="video-container">
+            <video id="videoElement" loop>
+                Your browser does not support the video element.
+            </video>
+            <img id="imageElement" alt="Uploaded image">
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <div class="file-type-buttons">
+            <button class="button file-type-button active" onclick="switchToVideo()">Video</button>
+            <button class="button file-type-button" onclick="switchToImage()">Image</button>
+        </div>
+
+        <div class="controls">
+            <input type="file" id="videoInput" accept="video/*" style="display: none;">
+            <input type="file" id="imageInput" accept="image/*" style="display: none;">
+            <button class="button" id="uploadButton" onclick="document.getElementById('videoInput').click()">Upload Video</button>
+            <button id="playButton" class="button" onclick="togglePlay()" disabled>Play</button>
+            <button id="pauseButton" class="button" onclick="togglePause()" disabled>Pause</button>
+            <button id="processButton" class="button" onclick="processImage()" style="display: none;">Process Image</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-item">
+                <span>FPS:</span>
+                <span id="fps">0</span>
+            </div>
+            <div class="stat-item">
+                <span>Roses Detected:</span>
+                <span id="roseCount">0</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('videoElement');
+        const image = document.getElementById('imageElement');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const playButton = document.getElementById('playButton');
+        const pauseButton = document.getElementById('pauseButton');
+        const processButton = document.getElementById('processButton');
+        const uploadButton = document.getElementById('uploadButton');
+        const videoInput = document.getElementById('videoInput');
+        const imageInput = document.getElementById('imageInput');
+        const fpsDisplay = document.getElementById('fps');
+        const roseCountDisplay = document.getElementById('roseCount');
+        const fileTypeButtons = document.querySelectorAll('.file-type-button');
+        
+        let isPlaying = false;
+        let frameInterval;
+        let lastFrameTime = 0;
+        let frameCount = 0;
+        let fps = 0;
+        let currentMode = 'video';
+        let mediaWidth = 0;
+        let mediaHeight = 0;
+        let scale = 1;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        // Set canvas size
+        function resizeCanvas() {
+            canvas.width = 640;
+            canvas.height = 480;
+        }
+        resizeCanvas();
+
+        // Calculate scaling and offset for media
+        function calculateMediaTransform(width, height) {
+            mediaWidth = width;
+            mediaHeight = height;
+            
+            // Calculate scale to fit 640px on the longer side
+            const scaleX = 640 / width;
+            const scaleY = 480 / height;
+            scale = Math.min(scaleX, scaleY);
+            
+            // Calculate new dimensions
+            const newWidth = width * scale;
+            const newHeight = height * scale;
+            
+            // Calculate offsets to center the media
+            offsetX = (640 - newWidth) / 2;
+            offsetY = (480 - newHeight) / 2;
+        }
+
+        // Draw media to canvas with proper scaling and centering
+        function drawMediaToCanvas() {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            if (currentMode === 'video') {
+                ctx.drawImage(video, offsetX, offsetY, mediaWidth * scale, mediaHeight * scale);
+            } else {
+                ctx.drawImage(image, offsetX, offsetY, mediaWidth * scale, mediaHeight * scale);
+            }
+        }
+
+        // Switch between video and image modes
+        function switchToVideo() {
+            currentMode = 'video';
+            video.style.display = 'block';
+            image.style.display = 'none';
+            playButton.style.display = 'inline-block';
+            pauseButton.style.display = 'inline-block';
+            processButton.style.display = 'none';
+            uploadButton.onclick = () => videoInput.click();
+            uploadButton.textContent = 'Upload Video';
+            fileTypeButtons.forEach(btn => btn.classList.remove('active'));
+            fileTypeButtons[0].classList.add('active');
+            stopFrameCapture();
+            resetDisplay();
+        }
+
+        function switchToImage() {
+            currentMode = 'image';
+            video.style.display = 'none';
+            image.style.display = 'block';
+            playButton.style.display = 'none';
+            pauseButton.style.display = 'none';
+            processButton.style.display = 'inline-block';
+            uploadButton.onclick = () => imageInput.click();
+            uploadButton.textContent = 'Upload Image';
+            fileTypeButtons.forEach(btn => btn.classList.remove('active'));
+            fileTypeButtons[1].classList.add('active');
+            stopFrameCapture();
+            resetDisplay();
+        }
+
+        function resetDisplay() {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            fpsDisplay.textContent = '0';
+            roseCountDisplay.textContent = '0';
+        }
+
+        // Handle video upload
+        videoInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                video.src = url;
+                video.onloadedmetadata = function() {
+                    calculateMediaTransform(video.videoWidth, video.videoHeight);
+                    playButton.disabled = false;
+                    pauseButton.disabled = false;
+                    drawMediaToCanvas();
+                };
+            }
+        });
+
+        // Handle image upload
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                image.src = url;
+                image.onload = function() {
+                    calculateMediaTransform(image.naturalWidth, image.naturalHeight);
+                    processButton.disabled = false;
+                    drawMediaToCanvas();
+                };
+            }
+        });
+
+        // Process single image
+        function processImage() {
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+            sendFrameToServer(imageData);
+        }
+
+        // Toggle play/pause
+        function togglePlay() {
+            if (!isPlaying) {
+                video.play();
+                isPlaying = true;
+                startFrameCapture();
+            }
+        }
+
+        function togglePause() {
+            if (isPlaying) {
+                video.pause();
+                isPlaying = false;
+                stopFrameCapture();
+            }
+        }
+
+        // Frame capture and processing
+        function startFrameCapture() {
+            frameInterval = setInterval(captureAndProcessFrame, 1000 / 30); // 30 FPS
+        }
+
+        function stopFrameCapture() {
+            clearInterval(frameInterval);
+        }
+
+        function captureAndProcessFrame() {
+            if (video.paused || video.ended) return;
+
+            // Draw video frame to canvas
+            drawMediaToCanvas();
+
+            // Calculate FPS
+            const now = performance.now();
+            frameCount++;
+            if (now - lastFrameTime >= 1000) {
+                fps = frameCount;
+                frameCount = 0;
+                lastFrameTime = now;
+                fpsDisplay.textContent = fps;
+            }
+
+            // Convert canvas to base64 and send to server
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+            sendFrameToServer(imageData);
+        }
+
+        // Send frame to server
+        function sendFrameToServer(imageData) {
+            fetch('http://localhost:5000/detect', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    image: imageData
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update rose count
+                    roseCountDisplay.textContent = data.counts.rose;
+
+                    // Draw media and detections
+                    drawMediaToCanvas();
+                    
+                    // Draw bounding boxes
+                    data.detections.forEach(detection => {
+                        const [x1, y1, x2, y2] = detection.bbox;
+                        
+                        // Scale coordinates back to original media size
+                        const originalX1 = (x1 - offsetX) / scale;
+                        const originalY1 = (y1 - offsetY) / scale;
+                        const originalX2 = (x2 - offsetX) / scale;
+                        const originalY2 = (y2 - offsetY) / scale;
+
+                        // Scale back to canvas coordinates
+                        const scaledX1 = originalX1 * scale + offsetX;
+                        const scaledY1 = originalY1 * scale + offsetY;
+                        const scaledX2 = originalX2 * scale + offsetX;
+                        const scaledY2 = originalY2 * scale + offsetY;
+
+                        ctx.strokeStyle = '#00ff00';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(scaledX1, scaledY1, scaledX2 - scaledX1, scaledY2 - scaledY1);
+
+                        // Draw rose ID
+                        ctx.fillStyle = '#00ff00';
+                        ctx.font = '16px Arial';
+                        ctx.fillText(`Rose ${detection.rose_id}`, scaledX1, scaledY1 - 5);
+                    });
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        // Handle video end
+        video.addEventListener('ended', function() {
+            if (video.loop) {
+                video.play();
+            } else {
+                isPlaying = false;
+                stopFrameCapture();
+            }
+        });
+    </script>
+</body>
+</html> 

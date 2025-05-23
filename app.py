@@ -151,14 +151,16 @@ def detect():
         for box in results.boxes:
             x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
             confidence = float(box.conf[0].cpu().numpy())
-            class_id = int(box.cls[0].cpu().numpy())
-            class_name = results.names[class_id]
-            
-            detections.append({
-                'bbox': [float(x1), float(y1), float(x2), float(y2)],
-                'confidence': confidence,
-                'class': class_name
-            })
+            # Only include detections with confidence >= 60%
+            if confidence >= 0.4:
+                class_id = int(box.cls[0].cpu().numpy())
+                class_name = results.names[class_id]
+                
+                detections.append({
+                    'bbox': [float(x1), float(y1), float(x2), float(y2)],
+                    'confidence': confidence,
+                    'class': class_name
+                })
         
         # Update rose tracking and get tracked detections
         tracked_detections = update_rose_tracking(detections)

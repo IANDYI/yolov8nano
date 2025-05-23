@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YOLOv8n Object Detection</title>
+    <title>Rose Detection</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>YOLOv8n Real-time Object Detection</h1>
+        <h1>Real-time Rose Detection</h1>
         
         <div class="video-container">
             <video id="video" autoplay playsinline></video>
@@ -18,6 +18,7 @@
         <div class="controls">
             <button id="startButton" class="button">Start Camera</button>
             <button id="stopButton" class="button" disabled>Stop Camera</button>
+            <button onclick="window.location.href='video_player.html'" class="button video-button">Open Video Player</button>
         </div>
         
         <div class="stats">
@@ -32,7 +33,7 @@
         </div>
         
         <div class="detection-counts">
-            <h2>Object Counts</h2>
+            <h2>Rose Count</h2>
             <div id="counts"></div>
         </div>
     </div>

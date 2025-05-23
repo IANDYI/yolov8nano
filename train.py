@@ -5,13 +5,20 @@ from ultralytics import YOLO
 model = YOLO('yolov8n.pt')
 
 # Train the model on the rose dataset
+if torch.backends.mps.is_available():
+    device = 'mps'
+    print("Using MPS")
+else:
+    device = 'cpu'
+    print("Using CPU") # Or whatever device you intend as a fallback
+
 results = model.train(
     data='dataset/roses/data.yaml',
-    epochs=100,  # number of training epochs
-    imgsz=640,   # image size
-    batch=16,    # batch size
-    name='rose_detector',  # experiment name
-    patience=20,  # early stopping patience
-    save=True,   # save best model
-    device='mps' if torch.backends.mps.is_available() else 'cpu'  # use Metal if available
-) 
+    epochs=100,
+    imgsz=640,
+    batch=16,
+    name='rose_detector',
+    patience=20,
+    save=True,
+    device=device  # Pass the determined device
+)
