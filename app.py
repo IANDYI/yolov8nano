@@ -12,7 +12,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Initialize YOLOv8n model
-model = YOLO('runs/detect/rose_detector/weights/best.pt')  # Use the custom rose detector
+model = YOLO('yolov8n.pt')  # Use the base YOLOv8n model
 
 # Check if Metal is available
 device = 'mps' if torch.backends.mps.is_available() else 'cpu'
